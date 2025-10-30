@@ -7,6 +7,7 @@ export default function CandidateEvaluator() {
   const [candidate, setCandidate] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', type: 'info' });
   const [weights, setWeights] = useState({ psychometric: 20, technical: 40, final: 40 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [stages, setStages] = useState({
     psychometric: {
       completed: false,
@@ -209,33 +210,73 @@ export default function CandidateEvaluator() {
   const recommendation = finalScore ? getRecommendation(finalScore) : null;
 
   return (
-    <div style={{
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      minHeight: '100vh',
-      background: '#f8fafc'
-    }}>
-      {/* Header */}
-      <header style={{
-        background: 'linear-gradient(135deg, #1f7aed 0%, #1e40af 100%)',
-        color: 'white',
-        padding: '1rem 2rem',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-hide { display: none !important; }
+          .mobile-full { width: 100% !important; max-width: 100% !important; }
+          .mobile-stack { grid-template-columns: 1fr !important; }
+          .mobile-text-sm { font-size: 0.875rem !important; }
+          .mobile-padding { padding: 1rem !important; }
+          .mobile-menu-btn { display: block !important; }
+          .sidebar-desktop { display: none !important; }
+          .main-content-mobile { padding: 1rem !important; }
+        }
+        @media (min-width: 769px) {
+          .sidebar-mobile { display: none !important; }
+        }
+      `}</style>
+      <div style={{
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        minHeight: '100vh',
+        background: '#f8fafc'
       }}>
-        <h1 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 600 }}>
-          PulseHire
-        </h1>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        {/* Header */}
+        <header style={{
+          background: 'linear-gradient(135deg, #1f7aed 0%, #1e40af 100%)',
+          color: 'white',
+          padding: '1rem',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{
+                display: 'none',
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                color: 'white',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '1.25rem'
+              }}
+              className="mobile-menu-btn"
+            >
+              ☰
+            </button>
+            <h1 style={{ fontSize: 'clamp(1.125rem, 4vw, 1.5rem)', margin: 0, fontWeight: 600 }}>
+              PulseHire
+            </h1>
+          </div>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{
             background: candidate ? '#10b981' : '#64748b',
-            padding: '0.5rem 1rem',
+            padding: '0.5rem 0.75rem',
             borderRadius: '20px',
-            fontSize: '0.875rem',
-            fontWeight: 500
+            fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '200px'
           }}>
-            {candidate ? `${candidate.firstName} ${candidate.lastName}` : 'No candidate loaded'}
+            {candidate ? `${candidate.firstName} ${candidate.lastName}` : 'No candidate'}
           </span>
           <button
             onClick={() => navigateTo('weights')}
@@ -243,13 +284,15 @@ export default function CandidateEvaluator() {
               background: 'rgba(255,255,255,0.2)',
               border: '1px solid rgba(255,255,255,0.3)',
               color: 'white',
-              padding: '0.5rem 1rem',
+              padding: '0.5rem 0.75rem',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontWeight: 500
+              fontWeight: 500,
+              fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+              whiteSpace: 'nowrap'
             }}
           >
-            Stage Weights
+            Weights
           </button>
         </div>
       </header>
@@ -1314,5 +1357,6 @@ export default function CandidateEvaluator() {
         </main>
       </div>
     </div>
+    </>
   );
 }
