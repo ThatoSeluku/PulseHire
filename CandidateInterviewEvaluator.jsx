@@ -315,6 +315,38 @@ export default function CandidateEvaluator() {
         .mobile-drawer.open {
           transform: translateX(0);
         }
+
+        /* Toast notification styles */
+        .toast-notification {
+          position: fixed;
+          top: 5rem;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 1000;
+          min-width: 300px;
+          max-width: 90vw;
+        }
+
+        @media (max-width: 768px) {
+          .toast-notification {
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            transform: none;
+            min-width: auto;
+            max-width: none;
+            width: calc(100% - 2rem);
+          }
+        }
+
+        /* Handle iPhone notch and safe areas */
+        @supports (padding: max(0px)) {
+          @media (max-width: 768px) {
+            .toast-notification {
+              top: max(1rem, env(safe-area-inset-top));
+            }
+          }
+        }
       `}</style>
       <div style={{
         fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -394,22 +426,19 @@ export default function CandidateEvaluator() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            className="toast-notification"
             style={{
-              position: 'fixed',
-              top: '5rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 1000,
               background: alert.type === 'success' ? '#10b981' :
                          alert.type === 'danger' ? '#ef4444' :
                          alert.type === 'warning' ? '#f59e0b' : '#3b82f6',
               color: 'white',
-              padding: '1rem 2rem',
+              padding: '1rem 1.5rem',
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-              minWidth: '300px',
               textAlign: 'center',
-              fontWeight: 500
+              fontWeight: 500,
+              fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+              wordBreak: 'break-word'
             }}
           >
             {alert.message}
