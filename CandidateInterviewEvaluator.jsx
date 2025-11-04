@@ -68,6 +68,23 @@ export default function CandidateEvaluator() {
     }
   }, []);
 
+  // Handle body scroll lock when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Close mobile menu on screen change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [currentScreen]);
+
   // Alert system
   const showAlert = (message, type = 'info') => {
     setAlert({ show: true, message, type });
@@ -87,9 +104,15 @@ export default function CandidateEvaluator() {
   const navigateTo = (screen) => {
     if (canAccessScreen(screen)) {
       setCurrentScreen(screen);
+      setMobileMenuOpen(false); // Close mobile drawer on navigation
     } else {
       showAlert('Please complete the previous stages first', 'warning');
     }
+  };
+
+  // Handle click outside drawer to close it
+  const handleOverlayClick = () => {
+    setMobileMenuOpen(false);
   };
 
   // Candidate form handler
@@ -212,6 +235,10 @@ export default function CandidateEvaluator() {
   return (
     <>
       <style>{`
+        * {
+          box-sizing: border-box;
+        }
+
         @media (max-width: 768px) {
           .mobile-hide { display: none !important; }
           .mobile-full { width: 100% !important; max-width: 100% !important; }
@@ -220,10 +247,73 @@ export default function CandidateEvaluator() {
           .mobile-padding { padding: 1rem !important; }
           .mobile-menu-btn { display: block !important; }
           .sidebar-desktop { display: none !important; }
-          .main-content-mobile { padding: 1rem !important; }
+          .main-content-mobile {
+            padding: 1rem !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+          }
+
+          /* Make all grids single column on mobile */
+          main [style*="display: grid"],
+          main [style*="gridTemplateColumns"] {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Ensure forms fit mobile screens */
+          form {
+            width: 100% !important;
+          }
+
+          /* Fix candidate info grid */
+          .candidate-info-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          /* Fix comparison grid */
+          .comparison-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
         @media (min-width: 769px) {
           .sidebar-mobile { display: none !important; }
+          .mobile-drawer-overlay { display: none !important; }
+        }
+
+        .mobile-drawer-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+        }
+
+        .mobile-drawer-overlay.open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .mobile-drawer {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 280px;
+          max-width: 85vw;
+          background: white;
+          z-index: 1000;
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          overflow-y: auto;
+          box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .mobile-drawer.open {
+          transform: translateX(0);
         }
       `}</style>
       <div style={{
@@ -327,9 +417,136 @@ export default function CandidateEvaluator() {
         )}
       </AnimatePresence>
 
+      {/* Mobile Drawer Overlay */}
+      <div
+        className={`mobile-drawer-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={handleOverlayClick}
+      />
+
+      {/* Mobile Drawer */}
+      <aside className={`mobile-drawer ${mobileMenuOpen ? 'open' : ''} sidebar-mobile`} style={{
+        padding: '2rem 1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2rem'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+            Navigation
+          </h2>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: '0.25rem',
+              lineHeight: 1
+            }}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Workflow
+          </h3>
+          <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1rem' }}>
+            Jump between stages once details are saved.
+          </p>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {[
+              { id: 'candidate', label: '1. Candidate Details' },
+              { id: 'psychometric', label: '2. Psychometric Stage', requiresCandidate: true },
+              { id: 'technical', label: '3. Technical Stage', requiresCandidate: true },
+              { id: 'final', label: '4. Final Interview', requiresCandidate: true },
+              { id: 'confidence', label: '5. Confidence Score', requiresStage: 'final' }
+            ].map(item => {
+              const isAccessible = canAccessScreen(item.id);
+              const isCompleted = item.id === 'psychometric' ? stages.psychometric.completed :
+                              item.id === 'technical' ? stages.technical.completed :
+                              item.id === 'final' ? stages.final.completed : false;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigateTo(item.id)}
+                  disabled={!isAccessible}
+                  title={!isAccessible ? 'Complete previous stages first' : 'Click to view this stage'}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    textAlign: 'left',
+                    border: 'none',
+                    background: currentScreen === item.id ? '#eff6ff' : 'transparent',
+                    color: currentScreen === item.id ? '#1f7aed' : isAccessible ? '#64748b' : '#cbd5e1',
+                    borderLeft: currentScreen === item.id ? '3px solid #1f7aed' : '3px solid transparent',
+                    cursor: isAccessible ? 'pointer' : 'not-allowed',
+                    opacity: isAccessible ? 1 : 0.5,
+                    fontWeight: 500,
+                    fontSize: '0.9rem',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    position: 'relative'
+                  }}
+                >
+                  {item.label}
+                  {isCompleted && (
+                    <div style={{
+                      marginLeft: 'auto',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      color: 'white',
+                      fontWeight: 'bold'
+                    }}>✓</div>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div style={{
+          background: '#f8fafc',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginTop: 'auto'
+        }}>
+          <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem', color: '#475569' }}>
+            Stage Weights
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Psychometric:</span>
+              <strong style={{ color: '#1f7aed' }}>{weights.psychometric}%</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Technical:</span>
+              <strong style={{ color: '#1f7aed' }}>{weights.technical}%</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Final Interview:</span>
+              <strong style={{ color: '#1f7aed' }}>{weights.final}%</strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
-        {/* Sidebar */}
-        <aside style={{
+        {/* Desktop Sidebar */}
+        <aside className="sidebar-desktop" style={{
           width: '280px',
           background: 'white',
           padding: '2rem 1.5rem',
@@ -432,7 +649,7 @@ export default function CandidateEvaluator() {
         </aside>
 
         {/* Main Content */}
-        <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+        <main className="main-content-mobile" style={{ flex: 1, padding: '2rem', overflowY: 'auto', width: '100%', maxWidth: '100%' }}>
           <motion.div
             key={currentScreen}
             initial={{ opacity: 0, y: 20 }}
@@ -456,7 +673,7 @@ export default function CandidateEvaluator() {
                   borderRadius: '12px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                  <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.75rem', color: '#475569' }}>
                         First Name <span style={{ color: '#ef4444' }}>*</span>
@@ -497,7 +714,7 @@ export default function CandidateEvaluator() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                  <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.75rem', color: '#475569' }}>
                         Email Address <span style={{ color: '#ef4444' }}>*</span>
@@ -563,7 +780,7 @@ export default function CandidateEvaluator() {
               currentScreen === stageKey && (
                 <div key={stageKey} style={{ maxWidth: '900px', margin: '0 auto' }}>
                   {candidate && (
-                    <div style={{
+                    <div className="candidate-info-grid mobile-stack" style={{
                       background: 'white',
                       padding: '1rem 1.5rem',
                       borderRadius: '8px',
@@ -616,7 +833,7 @@ export default function CandidateEvaluator() {
                           <label style={{ display: 'block', fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
                             {criterion.label}
                           </label>
-                          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1rem', alignItems: 'start' }}>
+                          <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1rem', alignItems: 'start' }}>
                             <div>
                               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 {[1, 2, 3, 4, 5].map(score => (
@@ -675,7 +892,7 @@ export default function CandidateEvaluator() {
                         <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
                           Additional Information
                         </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                        <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                           <div>
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#475569' }}>
                               Expected Salary Range
@@ -839,7 +1056,7 @@ export default function CandidateEvaluator() {
                     Compare your evaluated candidate with other applicants
                   </p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+                  <div className="comparison-grid mobile-stack" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
                     {/* Current Candidate */}
                     <div style={{
                       background: 'white',
@@ -1115,7 +1332,7 @@ export default function CandidateEvaluator() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+                <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
                   <div style={{
                     background: 'white',
                     padding: '1.5rem',
